@@ -20,6 +20,8 @@
                 ctx2 = can2.getContext("2d"),
                 drw2 = new TemperatureMap(ctx2),
                 can3 = document.getElementById("cns3");
+                ctx3 = can3.getContext("2d"),
+                drw3 = new TemperatureMap(ctx3),
 
             drw0.setRandomPoints(25, width, height);
             drw0.drawLow(5, 8, false, function () { drw0.drawPoints(); });
@@ -29,6 +31,16 @@
 
             drw2.setPoints(drw0.points, width, height);
             drw2.drawFull(true, function () {  });
+
+            let pts = drw0.points;
+            for (const i of [-1, 2]) {
+                for (const j of [-1, 2]) {
+                    pts.push({x: i*width, y: j*height, value:0});
+                    console.log({x: i*width, y: j*height, value:0})
+                }
+            }
+            drw3.setPoints(pts, width, height);
+            drw3.drawLow(5, 8, true, function () { drw3.drawPoints(); });
         }
         </script>
     </head>
@@ -36,8 +48,10 @@
         <img src='./map.png' style='position: absolute; top:    0px; left:    0px; z-index: -10'/>
         <img src='./map.png' style='position: absolute; top:    0px; left:  500px; z-index: -10'/>
         <img src='./map.png' style='position: absolute; top:  500px; left:    0px; z-index: -10'/>
+        <img src='./map.png' style='position: absolute; top:  500px; left:  500px; z-index: -10'/>
         <canvas id='cns0' width='500' height='500' style="position: absolute; top:    0px; left:    0px; height: 500px; width: 500px;"></canvas>
         <canvas id='cns1' width='500' height='500' style="position: absolute; top:    0px; left:  500px; height: 500px; width: 500px;"></canvas>
         <canvas id='cns2' width='500' height='500' style="position: absolute; top:  500px; left:    0px; height: 500px; width: 500px;"></canvas>
+        <canvas id='cns3' width='500' height='500' style="position: absolute; top:  500px; left:  500px; height: 500px; width: 500px;"></canvas>
     </body>
 </html>
