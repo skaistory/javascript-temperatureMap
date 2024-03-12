@@ -32,15 +32,19 @@
             drw2.setPoints(drw0.points, width, height);
             drw2.drawFull(true, function () {  });
 
-            let pts = drw0.points;
-            for (const i of [-1, 2]) {
-                for (const j of [-1, 2]) {
+            let pts = Array.from(drw0.points);
+            console.log(drw0.points);
+            for (const i of [-0.1, 1.1]) {
+                for (const j of [-0.1, 1.1]) {
                     pts.push({x: i*width, y: j*height, value:0});
                     console.log({x: i*width, y: j*height, value:0})
                 }
             }
+            console.log(pts);
             drw3.setPoints(pts, width, height);
-            drw3.drawLow(5, 8, true, function () { drw3.drawPoints(); });
+            // drw3.drawLow(5, 8, true, function () { drw3.drawPoints(); });
+            drw3.drawFull2(false, function () { drw3.drawPoints(); });
+            // return pts;
         }
         </script>
     </head>

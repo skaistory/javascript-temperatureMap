@@ -115,6 +115,9 @@ TemperatureMap.prototype.getColor = function (levels, value) {
     return TemperatureMap.hslToRgb(tmp, 1, 0.5);
 };
 
+
+// point위치에서 거리가 가까운 limit개의 vertices들의 값들을
+// 거리의 제곱에 역수에 따른 가중치 합을 구한다.
 TemperatureMap.prototype.getPointValue = function (limit, point) {
 
     var counter = 0,
@@ -130,7 +133,7 @@ TemperatureMap.prototype.getPointValue = function (limit, point) {
     // From : https://en.wikipedia.org/wiki/Inverse_distance_weighting
 
     if (TemperatureMap.pointInPolygon(point, this.polygon)) {
-
+        // point와 vertices들 사이의 거리를 구한다.
         for (counter = 0; counter < this.points.length; counter = counter + 1) {
             dis = TemperatureMap.squareDistance(point, this.points[counter]);
             if (dis === 0) {
@@ -138,9 +141,9 @@ TemperatureMap.prototype.getPointValue = function (limit, point) {
             }
             arr[counter] = [dis, counter];
         }
-
+        // 거리를 기준으로 정렬한다.
         arr.sort(function (a, b) { return a[0] - b[0]; });
-
+        // limit개의 vertices들의 값들을 거리의 제곱에 역수에 따른 가중치 합을 구한다.
         for (counter = 0; counter < limit; counter = counter + 1) {
             ptr = arr[counter];
             inv = 1 / Math.pow(ptr[0], pwr);
@@ -313,7 +316,9 @@ TemperatureMap.prototype.drawFull = function (levels, callback) {
         bucleSteps = 100.0,
         recursive = function () {
             window.requestAnimationFrame(function (timestamp) {
-
+                // 한번에 그리는 점의 수를 제한하여 브라우저가 반응성을 잃지 않도록 한다.
+                // bucletSteps는 한번에 그리는 점의 수를 제한한다.
+                // 이 값은 이전 그리기에 걸린 시간에 따라 조절된다.
                 tBeg = (new Date()).getTime();
                 for (cnt = 0; cnt < bucleSteps; cnt = cnt + 1) {
                     val = self.getPointValue(lim, { x: x, y: y });
@@ -323,7 +328,7 @@ TemperatureMap.prototype.drawFull = function (levels, callback) {
                         data[idx] = col[0];
                         data[idx + 1] = col[1];
                         data[idx + 2] = col[2];
-                        data[idx + 3] = 128;
+                        data[idx + 3] = 128;    // alpha
                     }
                     x = x + 1;
                     if (x > xEnd) {
@@ -332,16 +337,121 @@ TemperatureMap.prototype.drawFull = function (levels, callback) {
                         wy = w * y;
                     }
                 }
-
+                // bucleSteps 조정을 위한 시간 계산 및 조정
                 tDif = (new Date()).getTime() - tBeg;
                 if (tDif === 0) {
                     tDif = 1;
                 }
                 // bucleSteps = ((16 * bucleSteps) / tDif) * 0.5;
                 bucleSteps = (bucleSteps << 3) / tDif;
-
+                // 계산한 이미지 데이터를 캔버스에 그린다.
                 ctx.putImageData(img, 0, 0);
+                // 모든 점을 그렸는지 확인하고, 그렸다면 callback을 호출한다.
+                if (y < yEnd) {
+                    recursive();
+                } else if (typeof callback === 'function') {
+                    callback();
+                }
+            });
+        };
 
+    recursive();
+};
+TemperatureMap.prototype.getPointValue2 = function (limit, point) {
+
+    var counter = 0,
+        arr = [],
+        tmp = 0.0,
+        dis = 0.0,
+        inv = 0.0,
+        t = 0.0,
+        b = 0.0,
+        pwr = 2,
+        ptr;
+
+    // From : https://en.wikipedia.org/wiki/Inverse_distance_weighting
+
+    if (true) { //(TemperatureMap.pointInPolygon(point, this.polygon)) {
+        // point와 vertices들 사이의 거리를 구한다.
+        for (counter = 0; counter < this.points.length; counter = counter + 1) {
+            dis = TemperatureMap.squareDistance(point, this.points[counter]);
+            if (dis === 0) {
+                return this.points[counter].value;
+            }
+            arr[counter] = [dis, counter];
+        }
+        // 거리를 기준으로 정렬한다.
+        arr.sort(function (a, b) { return a[0] - b[0]; });
+        // limit개의 vertices들의 값들을 거리의 제곱에 역수에 따른 가중치 합을 구한다.
+        for (counter = 0; counter < limit; counter = counter + 1) {
+            ptr = arr[counter];
+            inv = 1 / Math.pow(ptr[0], pwr);
+            t = t + inv * this.points[ptr[1]].value;
+            b = b + inv;
+        }
+
+        return t / b;
+
+    } else {
+        return -255;
+    }
+};
+TemperatureMap.prototype.drawFull2 = function (levels, callback) {
+    'use strict';
+    var self = this,
+        ctx = this.ctx,
+        img = this.ctx.getImageData(0, 0, self.width, self.height),
+        data = img.data,
+        step = 0,
+        col = [],
+        cnt = 0,
+        idx = 0,
+        x = 0, //self.limits.xMin,
+        y = 0, //self.limits.yMin,
+        w = self.width * 4,
+        wy = w * y,
+        lim = self.points.length,
+        val = 0.0,
+        tBeg = 0,
+        tDif = 0,
+        xBeg = 0, //self.limits.xMin,
+        xEnd = self.width, //self.limits.xMax,
+        yEnd = self.height, //self.limits.yMax,
+        bucleSteps = 100.0,
+        recursive = function () {
+            window.requestAnimationFrame(function (timestamp) {
+                // 한번에 그리는 점의 수를 제한하여 브라우저가 반응성을 잃지 않도록 한다.
+                // bucletSteps는 한번에 그리는 점의 수를 제한한다.
+                // 이 값은 이전 그리기에 걸린 시간에 따라 조절된다.
+                tBeg = (new Date()).getTime();
+                for (cnt = 0; cnt < bucleSteps; cnt = cnt + 1) {
+                    val = self.getPointValue(lim, { x: x, y: y });
+                    idx = x * 4 + wy;
+                    if (val !== -255) {
+                        // console.log('wrong...', x, y, idx)
+                        col = self.getColor(levels, val);
+                        data[idx] = col[0];
+                        data[idx + 1] = col[1];
+                        data[idx + 2] = col[2];
+                        data[idx + 3] = 128;    // alpha
+                    }
+                    x = x + 1;
+                    if (x > xEnd) {
+                        x = xBeg;
+                        y = y + 1;
+                        wy = w * y;
+                    }
+                }
+                // bucleSteps 조정을 위한 시간 계산 및 조정
+                tDif = (new Date()).getTime() - tBeg;
+                if (tDif === 0) {
+                    tDif = 1;
+                }
+                // bucleSteps = ((16 * bucleSteps) / tDif) * 0.5;
+                bucleSteps = (bucleSteps << 3) / tDif;
+                // 계산한 이미지 데이터를 캔버스에 그린다.
+                ctx.putImageData(img, 0, 0);
+                // 모든 점을 그렸는지 확인하고, 그렸다면 callback을 호출한다.
                 if (y < yEnd) {
                     recursive();
                 } else if (typeof callback === 'function') {
