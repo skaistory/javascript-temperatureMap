@@ -1,7 +1,5 @@
 'use strict';
 
-// import { math } from 'mathjs';
-
 var TemperatureMap = function (ctx) {
 
     this.ctx = ctx;
@@ -159,89 +157,6 @@ TemperatureMap.prototype.getPointValue = function (limit, point) {
         return -255;
     }
 };
-TemperatureMap.prototype.getPointValue2 = function (limit, point) {
-
-    var counter = 0,
-        arr = [],
-        tmp = 0.0,
-        dis = 0.0,
-        inv = 0.0,
-        t = 0.0,
-        b = 0.0,
-        pwr = 2,
-        ptr;
-
-    // From : https://en.wikipedia.org/wiki/Inverse_distance_weighting
-
-    // if (TemperatureMap.pointInPolygon(point, this.polygon)) {
-        // point와 vertices들 사이의 거리를 구한다.
-        for (counter = 0; counter < this.points.length; counter = counter + 1) {
-            dis = TemperatureMap.squareDistance(point, this.points[counter]);
-            if (dis === 0) {
-                return this.points[counter].value;
-            }
-            arr[counter] = [dis, counter];
-        }
-        // 거리를 기준으로 정렬한다.
-        arr.sort(function (a, b) { return a[0] - b[0]; });
-        // limit개의 vertices들의 값들을 거리의 제곱에 역수에 따른 가중치 합을 구한다.
-        for (counter = 0; counter < limit; counter = counter + 1) {
-            ptr = arr[counter];
-            inv = 1 / Math.pow(ptr[0], pwr);
-            t = t + inv * this.points[ptr[1]].value;
-            b = b + inv;
-        }
-
-        return t / b;
-
-    // } else {
-        // return -255;
-    // }
-};
-
-TemperatureMap.prototype.getPointValue_alpha = function (limit, point) {
-
-    var counter = 0,
-        arr = [],
-        tmp = 0.0,
-        dis = 0.0,
-        inv = 0.0,
-        t = 0.0,
-        b = 0.0,
-        pwr = 2,
-        ptr;
-
-    // 시간 경과에 따라 가중치를 줄이는 방법: 경과 시간에 따라 복소평면에서 회전하는 방법
-
-    // point와 vertices들 사이의 거리를 구한다.
-    for (counter = 0; counter < this.points.length; counter = counter + 1) {
-        dis = TemperatureMap.squareDistance(point, this.points[counter]);
-        if (dis === 0) {
-            var a = math.multiply( this.points[counter].value, math.complex({r:1, phi:math.atan(this.points[counter].time)}) );
-            console.log(a);
-            // console.log( );
-            return [a.re, a.im];
-        }
-        arr[counter] = [dis, counter];
-    }
-    // 거리를 기준으로 정렬한다.
-    arr.sort(function (a, b) { return a[0] - b[0]; });
-    // limit개의 vertices들의 값들을 거리의 제곱에 역수에 따른 가중치 합을 구한다.
-    for (counter = 0; counter < limit; counter = counter + 1) {
-        ptr = arr[counter];
-        // inv = 1 / Math.pow(ptr[0], pwr);
-        inv = math.multiply( 1 / Math.pow(ptr[0], pwr), math.complex({r:1, phi:math.atan(this.points[ptr[1]].time)}) );
-        // t = t + inv * this.points[ptr[1]].value;
-        t = math.add(t,  math.multiply(inv, this.points[ptr[1]].value));
-        // b = b + inv;
-        b = math.add(b, inv);
-    }
-    var a = math.divide(t , math.abs(b));
-    
-    return [a.re, a.im];
-
-};
-
 
 TemperatureMap.prototype.setConvexhullPolygon = function (points) {
 
@@ -299,7 +214,6 @@ TemperatureMap.prototype.setRandomPoints = function (points, width, height) {
         x = 0,
         y = 0,
         v = 0.0,
-        t = 0.0,
         rst = [];
 
     for (counter = 0; counter < points; counter = counter + 1) {
@@ -307,12 +221,11 @@ TemperatureMap.prototype.setRandomPoints = function (points, width, height) {
         x = parseInt((Math.random() * 100000) % width, 10);
         y = parseInt((Math.random() * 100000) % height, 10);
         v = (Math.random() * 100) / 2;
-        t = (Math.random() * 5);
 
         if (Math.random() > 0.5) { v = -v; }
         if (Math.random() > 0.5) { v = v + 30; }
 
-        rst.push({ x: x, y: y, value: v, time: t });
+        rst.push({ x: x, y: y, value: v });
     }
 
     this.setPoints(rst, width, height);
@@ -342,7 +255,7 @@ TemperatureMap.prototype.drawLow = function (limit, res, clean, callback) {
     // Draw aproximation
     for (x = xBeg; x < xEnd; x = x + res) {
         for (y = yBeg; y < yEnd; y = y + res) {
-            val = self.getPointValue2(lim, { x: x, y: y });
+            val = self.getPointValue(lim, { x: x, y: y });
             if (val !== -255) {
                 ctx.beginPath();  //<== beginpath
                 col = self.getColor(false, val);
@@ -389,17 +302,17 @@ TemperatureMap.prototype.drawFull = function (levels, callback) {
         col = [],
         cnt = 0,
         idx = 0,
-        x = 0, //self.limits.xMin,
-        y = 0, //self.limits.yMin,
+        x = self.limits.xMin,
+        y = self.limits.yMin,
         w = self.width * 4,
         wy = w * y,
         lim = self.points.length,
         val = 0.0,
         tBeg = 0,
         tDif = 0,
-        xBeg = 0, //self.limits.xMin,
-        xEnd = self.width, //self.limits.xMax,
-        yEnd = self.height, //self.limits.yMax,
+        xBeg = self.limits.xMin,
+        xEnd = self.limits.xMax,
+        yEnd = self.limits.yMax,
         bucleSteps = 100.0,
         recursive = function () {
             window.requestAnimationFrame(function (timestamp) {
@@ -408,7 +321,7 @@ TemperatureMap.prototype.drawFull = function (levels, callback) {
                 // 이 값은 이전 그리기에 걸린 시간에 따라 조절된다.
                 tBeg = (new Date()).getTime();
                 for (cnt = 0; cnt < bucleSteps; cnt = cnt + 1) {
-                    val = self.getPointValue2(lim, { x: x, y: y });
+                    val = self.getPointValue(lim, { x: x, y: y });
                     idx = x * 4 + wy;
                     if (val !== -255) {
                         col = self.getColor(levels, val);
@@ -513,7 +426,7 @@ TemperatureMap.prototype.drawFull2 = function (levels, callback) {
                 // 이 값은 이전 그리기에 걸린 시간에 따라 조절된다.
                 tBeg = (new Date()).getTime();
                 for (cnt = 0; cnt < bucleSteps; cnt = cnt + 1) {
-                    val = self.getPointValue2(lim, { x: x, y: y });
+                    val = self.getPointValue(lim, { x: x, y: y });
                     idx = x * 4 + wy;
                     if (val !== -255) {
                         // console.log('wrong...', x, y, idx)
@@ -522,78 +435,6 @@ TemperatureMap.prototype.drawFull2 = function (levels, callback) {
                         data[idx + 1] = col[1];
                         data[idx + 2] = col[2];
                         data[idx + 3] = 128;    // alpha
-                    }
-                    x = x + res;
-                    if (x > xEnd) {
-                        x = xBeg;
-                        y = y + res;
-                        wy = w * y;
-                    }
-                }
-                // bucleSteps 조정을 위한 시간 계산 및 조정
-                tDif = (new Date()).getTime() - tBeg;
-                if (tDif === 0) {
-                    tDif = 1;
-                }
-                // bucleSteps = ((16 * bucleSteps) / tDif) * 0.5;
-                bucleSteps = (bucleSteps << 3) / tDif;
-                // 계산한 이미지 데이터를 캔버스에 그린다.
-                ctx.putImageData(img, 0, 0);
-                // 모든 점을 그렸는지 확인하고, 그렸다면 callback을 호출한다.
-                if (y < yEnd) {
-                    recursive();
-                } else if (typeof callback === 'function') {
-                    callback();
-                }
-            });
-        };
-
-    recursive();
-};
-
-TemperatureMap.prototype.drawFull_alpha = function (levels, callback) {
-    'use strict';
-    var self = this,
-        ctx = this.ctx,
-        img = this.ctx.getImageData(0, 0, self.width, self.height),
-        data = img.data,
-        step = 0,
-        col = [],
-        cnt = 0,
-        idx = 0,
-        res = 1, // calculate a point value for each res pixels
-        x = 0, //self.limits.xMin,
-        y = 0, //self.limits.yMin,
-        w = self.width * 4,
-        wy = w * y,
-        lim = 10, //self.points.length,
-        val = 0.0,
-        tBeg = 0,
-        tDif = 0,
-        xBeg = 0, //self.limits.xMin,
-        xEnd = self.width, //self.limits.xMax,
-        yEnd = self.height, //self.limits.yMax,
-        bucleSteps = 100.0,
-        recursive = function () {
-            window.requestAnimationFrame(function (timestamp) {
-                // 한번에 그리는 점의 수를 제한하여 브라우저가 반응성을 잃지 않도록 한다.
-                // bucletSteps는 한번에 그리는 점의 수를 제한한다.
-                // 이 값은 이전 그리기에 걸린 시간에 따라 조절된다.
-                tBeg = (new Date()).getTime();
-                for (cnt = 0; cnt < bucleSteps; cnt = cnt + 1) {
-                    val = self.getPointValue_alpha(lim, { x: x, y: y });
-                    idx = x * 4 + wy;
-                    if (val[0] !== -255) {
-                        // console.log('wrong...', x, y, idx)
-                        col = self.getColor(levels, val[0]);
-                        data[idx] = col[0];
-                        data[idx + 1] = col[1];
-                        data[idx + 2] = col[2];
-                        data[idx + 3] = Math.max(128 - val[1], 0); // 128;    // alpha
-                        
-                    }
-                    if (x % 100 == 0) {
-                        console.log('alpha', val[1]);
                     }
                     x = x + res;
                     if (x > xEnd) {
@@ -652,7 +493,7 @@ TemperatureMap.prototype.drawPoints = function (callback) {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = 'rgb(0, 0, 0)';
-            ctx.fillText(Math.round(pnt.value) + '@' + Math.round(pnt.time), pnt.x, pnt.y);
+            ctx.fillText(Math.round(pnt.value), pnt.x, pnt.y);
         }
 
         if (typeof callback === 'function') {
